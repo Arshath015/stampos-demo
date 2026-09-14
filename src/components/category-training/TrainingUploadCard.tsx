@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { useSimulatedUpload } from "@/components/ui/useSimulatedUpload";
+import { useObjectUrls } from "@/components/ui/useObjectUrls";
 import { UploadTrainingPanel } from "@/components/ui/UploadTrainingPanel";
 
 /**
@@ -17,10 +18,12 @@ export function TrainingUploadCard() {
     phase,
     progress,
     fileNames,
+    files,
     openPicker,
     inputRef,
     handleFileChange,
   } = useSimulatedUpload();
+  const previews = useObjectUrls(files);
 
   return (
     <Card className="mb-4 border-2 border-dashed border-accent bg-accent-sub py-7 text-center">
@@ -43,7 +46,7 @@ export function TrainingUploadCard() {
           <div className="mt-1 text-[11px] text-t3">AI will auto-classify each image into the correct sub-category</div>
         </button>
       ) : (
-        <UploadTrainingPanel phase={phase} progress={progress} fileNames={fileNames} />
+        <UploadTrainingPanel phase={phase} progress={progress} fileNames={fileNames} previews={previews} />
       )}
     </Card>
   );

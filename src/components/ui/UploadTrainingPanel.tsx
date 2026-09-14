@@ -11,11 +11,15 @@ export function UploadTrainingPanel({
   phase,
   progress,
   fileNames,
+  previews,
   skuLabel,
 }: {
   phase: UploadPhase;
   progress: number;
   fileNames: string[];
+  /** Real blob: object URLs for the files the presenter actually picked
+   * (see useObjectUrls) — rendered as genuine thumbnails, not a preset. */
+  previews?: string[];
   /** e.g. "AOF Dewy Foundation — Shade 07" — named in the training copy so
    * it's clear which SKU is being trained on. */
   skuLabel?: string;
@@ -34,6 +38,7 @@ export function UploadTrainingPanel({
         {fileNames.length > 0 && (
           <div className="max-w-xs truncate text-[10.5px] text-t4">{fileNames.join(", ")}</div>
         )}
+        <ThumbRow previews={previews} />
         <div className="mt-1 h-1.5 w-64 overflow-hidden rounded-full bg-s2">
           <div className="h-full rounded-full bg-accent transition-all duration-150" style={{ width: `${progress}%` }} />
         </div>
@@ -49,6 +54,7 @@ export function UploadTrainingPanel({
         <div className="text-[11px] text-t4">
           {skuLabel ? <>Learning {skuLabel}&apos;s color, texture, and finish</> : "Learning this SKU's color, texture, and finish"}
         </div>
+        <ThumbRow previews={previews} />
         <div className="mt-1 h-1.5 w-64 overflow-hidden rounded-full bg-s2">
           <div className="h-full rounded-full bg-accent transition-all duration-150" style={{ width: `${progress}%` }} />
         </div>
@@ -58,4 +64,25 @@ export function UploadTrainingPanel({
   }
 
   return null;
+}
+
+/** Real thumbnails of whatever the presenter just picked, capped so a
+ * 50-file batch doesn't blow out the layout. */
+function ThumbRow({ previews }: { previews?: string[] }) {
+  if (!previews || previews.length === 0) return null;
+  const shown = previews.slice(0, 6);
+  const overflow = previews.length - shown.length;
+  return (
+    <div className="flex flex-wrap justify-center gap-1.5">
+      {shown.map((src, i) => (
+        // eslint-disable-next-line @next/next/no-img-element -- blob: object URLs aren't valid next/image sources
+        <img key={i} src={src} alt="" className="h-12 w-12 rounded-md border border-glass-border object-cover" />
+      ))}
+      {overflow > 0 && (
+        <div className="flex h-12 w-12 items-center justify-center rounded-md border border-glass-border bg-s2 text-[10px] font-semibold text-t3">
+          +{overflow}
+        </div>
+      )}
+    </div>
+  );
 }

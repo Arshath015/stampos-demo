@@ -15,11 +15,12 @@ export interface SimulatedUploadOptions {
 
 /**
  * Drives a realistic upload → training simulation off a genuine OS file
- * picker. No file content is read or sent anywhere (this is a static demo
- * with preloaded results) — the point is that the *interaction* is real:
- * a real <input type="file"> opens, and the sequence only starts if the
- * user actually picks something (cancelling the dialog does nothing, same
- * as it would against a real upload).
+ * picker. Nothing is ever sent to a server (this is a static demo with
+ * preloaded results) — but the *input* half is real: a real
+ * <input type="file"> opens, non-image picks are ignored, cancelling the
+ * dialog does nothing, and the selected files are kept around (see `files`)
+ * so callers can render real thumbnails via useObjectUrls instead of a
+ * canned preview.
  *
  * Reused wherever the app presents an upload/training moment (Generate's
  * Upload step, Category Training's bulk-upload zone) so the illusion is
@@ -29,6 +30,9 @@ export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComple
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [progress, setProgress] = useState(0);
   const [fileNames, setFileNames] = useState<string[]>([]);
+  // The actual selected files (image-only) — kept around so the panel can
+  // render real thumbnails via useObjectUrls instead of just a name list.
+  const [files, setFiles] = useState<File[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -41,11 +45,18 @@ export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComple
   }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return; // user cancelled — do nothing
-    setFileNames(Array.from(files).map((f) => f.name));
-    runSequence();
+    // Snapshot into a plain array before touching e.target.value — resetting
+    // value clears the *same* live FileList object e.target.files returned,
+    // so reading .length after that point (even via an earlier-saved
+    // reference) sees 0 and silently drops every real selection.
+    const all = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = ""; // allow re-selecting the same file later
+    if (all.length === 0) return; // user cancelled — do nothing
+    const picked = all.filter((f) => f.type.startsWith("image/"));
+    if (picked.length === 0) return; // non-image selection — no-op, stay idle
+    setFiles(picked);
+    setFileNames(picked.map((f) => f.name));
+    runSequence();
   }
 
   function runSequence() {
@@ -90,12 +101,14 @@ export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComple
     setPhase("idle");
     setProgress(0);
     setFileNames([]);
+    setFiles([]);
   }
 
   return {
     phase,
     progress,
     fileNames,
+    files,
     openPicker,
     reset,
     inputRef,

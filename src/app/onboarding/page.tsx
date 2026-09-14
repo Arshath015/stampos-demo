@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -12,6 +12,7 @@ import {
 import { AbstractBackground } from "@/components/ui/AbstractBackground";
 import { RadioCard } from "@/components/ui/RadioCard";
 import { CategorySection } from "@/components/ui/CategoryGroup";
+import { useObjectUrls } from "@/components/ui/useObjectUrls";
 import { categoryTaxonomy, defaultSelectedChips, foundationShades, lipstickShades } from "@/lib/mock-data";
 
 const ROLES = [
@@ -49,6 +50,11 @@ export default function OnboardingPage() {
   const [aesthetic, setAesthetic] = useState("");
   const [background, setBackground] = useState("white");
   const [imageType, setImageType] = useState("on-model");
+  const [logoFiles, setLogoFiles] = useState<File[]>([]);
+  const [refFiles, setRefFiles] = useState<File[]>([]);
+  const logoPreviews = useObjectUrls(logoFiles);
+  const refPreviews = useObjectUrls(refFiles);
+  const refPickerRef = useRef<HTMLInputElement | null>(null);
 
   const last = step === ONBOARDING_STEPS.length - 1;
   function next() {
@@ -260,7 +266,14 @@ export default function OnboardingPage() {
               className="w-full border-b border-white/20 bg-transparent py-3.5 text-sm text-[#f8f8f2] outline-none focus:border-gold"
             />
           </div>
-          <UploadZone label="Optional: Drop your logo here" sub="PNG or SVG, transparent background" small />
+          <FileDropZone
+            label="Optional: Drop your logo here"
+            sub="PNG or SVG, transparent background"
+            small
+            files={logoFiles}
+            previews={logoPreviews}
+            onFiles={(picked) => setLogoFiles(picked.slice(0, 1))}
+          />
           <NextButton onClick={next} />
         </OnboardingSplit>
       )}
@@ -272,18 +285,28 @@ export default function OnboardingPage() {
           vis={
             <>
               <div className="grid max-w-[400px] grid-cols-2 gap-2 p-12">
-                {REF_IMAGES.slice(0, 4).map((img) => (
-                  <div key={img.src} className="aspect-[3/4] overflow-hidden rounded-lg border border-gold/30">
-                    <Image src={img.src} alt="" width={180} height={240} className="h-full w-full object-cover" />
-                  </div>
-                ))}
+                {(refPreviews.length > 0 ? refPreviews : REF_IMAGES.slice(0, 4).map((i) => i.src))
+                  .slice(0, 4)
+                  .map((src, i) => (
+                    <div key={i} className="aspect-[3/4] overflow-hidden rounded-lg border border-gold/30">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- may be a blob: object URL for a real upload */}
+                      <img src={src} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  ))}
               </div>
               <div className="absolute bottom-12 left-12 z-[3]">
                 <div className="text-[9px] uppercase tracking-[2px] text-white/40">
                   Your references
                 </div>
                 <div className="mt-1.5 text-[13px] text-white/60">
-                  4 uploaded · <span className="text-gold">AI is learning your style</span>
+                  {refFiles.length > 0 ? (
+                    <>
+                      {refFiles.length} uploaded ·{" "}
+                      <span className="text-gold">AI is learning your style</span>
+                    </>
+                  ) : (
+                    <span className="text-white/40">Upload references to begin</span>
+                  )}
                 </div>
               </div>
             </>
@@ -298,19 +321,37 @@ export default function OnboardingPage() {
           <p className="mb-8 text-[13px] leading-relaxed text-white/50">
             Upload 5–10 reference images. More = better AI accuracy.
           </p>
-          <UploadZone label="Drop images here or click to browse" sub="JPG, PNG up to 10MB each" />
+          <FileDropZone
+            label="Drop images here or click to browse"
+            sub="JPG, PNG up to 10MB each"
+            multiple
+            files={refFiles}
+            previews={refPreviews}
+            onFiles={(picked) => setRefFiles((prev) => [...prev, ...picked])}
+            pickerRef={refPickerRef}
+          />
           <div className="mt-4 flex flex-wrap justify-center gap-2.5">
-            {REF_IMAGES.slice(6, 10).map((img) => (
-              <div key={img.src} className="h-[106px] w-20 overflow-hidden rounded-lg border border-gold/40 shadow-lg">
-                <Image src={img.src} alt="" width={80} height={106} className="h-full w-full object-cover" />
+            {refPreviews.slice(0, 4).map((src, i) => (
+              <div key={i} className="h-[106px] w-20 overflow-hidden rounded-lg border border-gold/40 shadow-lg">
+                {/* eslint-disable-next-line @next/next/no-img-element -- blob: object URL */}
+                <img src={src} alt="" className="h-full w-full object-cover" />
               </div>
             ))}
-            <div className="flex h-[106px] w-20 items-center justify-center rounded-lg border border-dashed border-white/10 text-xl text-white/30">
+            {refFiles.length > 4 && (
+              <div className="flex h-[106px] w-20 items-center justify-center rounded-lg border border-gold/40 bg-white/5 text-[11px] font-semibold text-white/60">
+                +{refFiles.length - 4}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => refPickerRef.current?.click()}
+              className="flex h-[106px] w-20 items-center justify-center rounded-lg border border-dashed border-white/10 text-xl text-white/30 transition-colors hover:border-gold hover:text-gold"
+            >
               +
-            </div>
+            </button>
           </div>
           <p className="mb-2 mt-3 text-[9px] tracking-wide text-white/30">
-            4 of 5 minimum uploaded
+            {refFiles.length} of 5 minimum uploaded
           </p>
           <NextButton onClick={next} />
         </OnboardingSplit>
@@ -327,9 +368,11 @@ export default function OnboardingPage() {
                   Your Uploaded References
                 </div>
                 <div className="flex gap-3">
-                  <RefThumb img={REF_IMAGES[0]} label="On-model" highlight />
-                  <RefThumb img={REF_IMAGES[1]} label="Flat lay" />
-                  <RefThumb img={REF_IMAGES[2]} label="Product" />
+                  {(refPreviews.length > 0 ? refPreviews : REF_IMAGES.slice(0, 3).map((i) => i.src))
+                    .slice(0, 3)
+                    .map((src, i) => (
+                      <RefThumb key={i} src={src} label={["On-model", "Flat lay", "Product"][i]} highlight={i === 0} />
+                    ))}
                 </div>
               </div>
             </>
@@ -418,7 +461,7 @@ export default function OnboardingPage() {
                 </svg>
                 {brandName || "Urban Thread"}
               </div>
-              <Stat value="4" label="References" />
+              <Stat value={String(refFiles.length)} label="References" />
               <Stat value="5" label="Categories" />
               <Stat value="500" label="Images/mo" />
             </div>
@@ -443,7 +486,7 @@ export default function OnboardingPage() {
   );
 }
 
-function RefThumb({ img, label, highlight }: { img: { src: string }; label: string; highlight?: boolean }) {
+function RefThumb({ src, label, highlight }: { src: string; label: string; highlight?: boolean }) {
   return (
     <div className="text-center">
       <div
@@ -451,7 +494,8 @@ function RefThumb({ img, label, highlight }: { img: { src: string }; label: stri
           highlight ? "border-gold/40" : "border-white/10"
         }`}
       >
-        <Image src={img.src} alt="" width={80} height={106} className="h-full w-full object-cover" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- may be a blob: object URL for a real upload */}
+        <img src={src} alt="" className="h-full w-full object-cover" />
       </div>
       <div className="text-[8px] uppercase tracking-wide text-white/40">{label}</div>
     </div>
@@ -481,18 +525,103 @@ function NextButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function UploadZone({ label, sub, small }: { label: string; sub: string; small?: boolean }) {
+/**
+ * Real file picker + real drag-and-drop, styled like the prototype's static
+ * dropzone. Nothing is uploaded anywhere — files stay client-side and are
+ * only used to render genuine thumbnails via blob: object URLs (see
+ * useObjectUrls), replacing the hardcoded stock photos the prototype shipped
+ * with. Cancelling the OS picker or dropping a non-image is a no-op.
+ */
+function FileDropZone({
+  label,
+  sub,
+  small,
+  multiple,
+  files,
+  previews,
+  onFiles,
+  pickerRef,
+}: {
+  label: string;
+  sub: string;
+  small?: boolean;
+  multiple?: boolean;
+  files: File[];
+  previews: string[];
+  onFiles: (files: File[]) => void;
+  pickerRef?: React.RefObject<HTMLInputElement | null>;
+}) {
+  const localRef = useRef<HTMLInputElement | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  function assignRef(el: HTMLInputElement | null) {
+    localRef.current = el;
+    if (pickerRef) pickerRef.current = el;
+  }
+
+  function commitFiles(list: FileList | null) {
+    if (!list || list.length === 0) return; // cancelled — do nothing
+    const picked = Array.from(list).filter((f) => f.type.startsWith("image/"));
+    if (picked.length === 0) return; // non-image drop/pick — no-op
+    onFiles(picked);
+  }
+
+  const hasFiles = files.length > 0;
+
   return (
     <div
-      className={`cursor-pointer rounded-xl border border-dashed border-white/15 text-center transition-colors hover:border-gold hover:bg-gold-sub/40 ${
-        small ? "mt-3 p-6" : "p-10"
-      }`}
+      role="button"
+      tabIndex={0}
+      onClick={() => localRef.current?.click()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          localRef.current?.click();
+        }
+      }}
+      onDragOver={(e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setDragActive(true);
+      }}
+      onDragLeave={() => setDragActive(false)}
+      onDrop={(e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setDragActive(false);
+        commitFiles(e.dataTransfer.files);
+      }}
+      className={`cursor-pointer rounded-xl border border-dashed text-center transition-colors ${
+        dragActive ? "border-gold bg-gold-sub/40" : "border-white/15 hover:border-gold hover:bg-gold-sub/40"
+      } ${small ? "mt-3 p-6" : "p-10"}`}
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-white/40">
-        <path d="M12 16V4m0 0L7 9m5-5 5 5" />
-        <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-      </svg>
-      <div className="text-[13px] text-white/70">{label}</div>
+      <input
+        ref={assignRef}
+        type="file"
+        accept="image/*"
+        multiple={multiple}
+        className="hidden"
+        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+          commitFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      {hasFiles && small ? (
+        <div className="mx-auto mb-2 h-14 w-14 overflow-hidden rounded-lg border border-gold/40 bg-white/5">
+          {/* eslint-disable-next-line @next/next/no-img-element -- blob: object URL */}
+          <img src={previews[0]} alt="" className="h-full w-full object-contain" />
+        </div>
+      ) : (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-white/40">
+          <path d="M12 16V4m0 0L7 9m5-5 5 5" />
+          <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+        </svg>
+      )}
+      <div className="text-[13px] text-white/70">
+        {hasFiles
+          ? small
+            ? files[0].name
+            : `${files.length} image${files.length === 1 ? "" : "s"} selected — click or drop to add more`
+          : label}
+      </div>
       <div className="mt-1 text-[10.5px] text-white/35">{sub}</div>
     </div>
   );

@@ -11,6 +11,7 @@ import { ImageResultGrid } from "@/components/ui/ImageResultGrid";
 import { CategoryPicker } from "@/components/generate/CategoryPicker";
 import { ResultsRevealGrid } from "@/components/generate/ResultsRevealGrid";
 import { useSimulatedUpload } from "@/components/ui/useSimulatedUpload";
+import { useObjectUrls } from "@/components/ui/useObjectUrls";
 import { UploadTrainingPanel } from "@/components/ui/UploadTrainingPanel";
 import { generateResults, foundationShades, lipstickShades, foundationSkus, lipstickSkus } from "@/lib/mock-data";
 import type { ResultImage } from "@/lib/results";
@@ -164,10 +165,12 @@ export function GenerateClient({
     phase: uploadPhase,
     progress: uploadProgress,
     fileNames: uploadFileNames,
+    files: uploadFiles,
     openPicker: openUploadPicker,
     inputRef: uploadInputRef,
     handleFileChange: handleUploadFileChange,
   } = useSimulatedUpload({ onComplete: () => goto(2) });
+  const uploadPreviews = useObjectUrls(uploadFiles);
   const uploadSkuLabel = currentSku ? `${skuLabelFor(productLine as ProductLine)} — Shade ${currentSku.shade}` : undefined;
 
   return (
@@ -330,7 +333,7 @@ export function GenerateClient({
                 </div>
               </>
             ) : (
-              <UploadTrainingPanel phase={uploadPhase} progress={uploadProgress} fileNames={uploadFileNames} skuLabel={uploadSkuLabel} />
+              <UploadTrainingPanel phase={uploadPhase} progress={uploadProgress} fileNames={uploadFileNames} previews={uploadPreviews} skuLabel={uploadSkuLabel} />
             )}
           </Card>
           <Card>
