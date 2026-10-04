@@ -14,7 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
-const siteUrl = "https://stampos-demo.vercel.app";
+const siteUrl = "https://stampos-ai.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

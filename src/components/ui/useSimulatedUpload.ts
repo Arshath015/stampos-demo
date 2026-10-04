@@ -162,5 +162,9 @@ export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComple
     inputRef,
     handleFileChange,
     handleDrop,
+    /** Feeds File objects (e.g. fetched from a same-origin demo asset)
+     * through the exact same upload→training sequence as a real file pick
+     * or desktop drag-and-drop — see commitFiles. */
+    addFiles: commitFiles,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, KeyboardEvent } from "react";
+import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { StepWizard } from "@/components/ui/StepWizard";
@@ -10,6 +10,7 @@ import { ToggleChip } from "@/components/ui/ToggleChip";
 import { ImageResultGrid } from "@/components/ui/ImageResultGrid";
 import { CategoryPicker } from "@/components/generate/CategoryPicker";
 import { ResultsRevealGrid } from "@/components/generate/ResultsRevealGrid";
+import { DemoAssetsPanel, DEMO_ASSET_MIME, type DemoAssetPayload } from "@/components/generate/DemoAssetsPanel";
 import { useSimulatedUpload } from "@/components/ui/useSimulatedUpload";
 import { useObjectUrls } from "@/components/ui/useObjectUrls";
 import { UploadTrainingPanel } from "@/components/ui/UploadTrainingPanel";
@@ -211,12 +212,66 @@ export function GenerateClient({
     inputRef: uploadInputRef,
     handleFileChange: handleUploadFileChange,
     handleDrop: handleUploadDrop,
+    addFiles: addUploadFiles,
   } = useSimulatedUpload({ cacheKey: uploadCacheKey });
   const uploadPreviews = useObjectUrls(uploadFiles);
   const uploadSkuLabel = currentSku ? `${skuLabelFor(productLine as ProductLine)} — ${currentSku.label}` : category.name;
   const [uploadDragActive, setUploadDragActive] = useState(false);
   const [addingSku, setAddingSku] = useState(false);
   const [newSkuDraft, setNewSkuDraft] = useState("");
+
+  // Non-blocking heads-up shown when a demo asset for a different SKU than
+  // the one currently selected gets dropped/used — the presenter can still
+  // continue, this is just so the mismatch isn't silently invisible.
+  const [uploadNote, setUploadNote] = useState<string | null>(null);
+  const uploadNoteTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Demo-only: fetches a real product reference photo already on the page
+   * (public/images/products/**) and feeds it through the exact same
+   * upload→training path as a genuine file pick or OS drag-and-drop, so the
+   * rest of the flow (thumbnails, "N of 1 minimum uploaded", Continue,
+   * Configure/Generate/Review) can't tell the difference. */
+  async function addDemoPhoto(sku: SkuOption, line: ProductLine) {
+    const sameLine = line === productLine;
+    if (!sameLine || sku.shade !== selectedShade) {
+      const thisLabel = sameLine ? `Shade ${sku.shade}` : `${skuLabelFor(line)} — Shade ${sku.shade}`;
+      const selectedLabel = sameLine && currentSku ? currentSku.label : uploadSkuLabel;
+      setUploadNote(`This photo is for ${thisLabel}, but you selected ${selectedLabel}`);
+    } else {
+      setUploadNote(null);
+    }
+    if (uploadNoteTimeout.current) clearTimeout(uploadNoteTimeout.current);
+    uploadNoteTimeout.current = setTimeout(() => setUploadNote(null), 6000);
+
+    const res = await fetch(sku.swatchSrc);
+    const blob = await res.blob();
+    const ext = sku.swatchSrc.split(".").pop() ?? "jpg";
+    const file = new File([blob], `${line}-shade-${sku.shade}-demo.${ext}`, {
+      type: blob.type || "image/jpeg",
+    });
+    addUploadFiles([file]);
+  }
+
+  /** Drop handler for the real dropzone — real OS file drags populate
+   * `dataTransfer.files` and are handled exactly as before. A demo-asset
+   * tile dragged from DemoAssetsPanel carries no files (it's an in-page
+   * <img>/div drag), only our custom payload type, so that path is only
+   * ever reached when there are no real files to fall back to. */
+  function handleDropzoneDrop(dataTransfer: DataTransfer) {
+    if (dataTransfer.files && dataTransfer.files.length > 0) {
+      handleUploadDrop(dataTransfer.files);
+      return;
+    }
+    const raw = dataTransfer.getData(DEMO_ASSET_MIME);
+    if (!raw) return;
+    try {
+      const { line, shade } = JSON.parse(raw) as DemoAssetPayload;
+      const sku = (line === "foundation" ? foundationSkus : lipstickSkus).find((s) => s.shade === shade);
+      if (sku) addDemoPhoto(sku, line);
+    } catch {
+      // Not our payload — ignore.
+    }
+  }
 
   function commitNewSku() {
     addCustomSku(newSkuDraft);
@@ -391,53 +446,63 @@ export function GenerateClient({
 
       {step === 1 && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card
-            className={`flex flex-col items-center justify-center gap-3 border-dashed p-12 text-center transition-colors ${
-              uploadDragActive ? "border-accent bg-accent-sub/40" : ""
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setUploadDragActive(true);
-            }}
-            onDragLeave={() => setUploadDragActive(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setUploadDragActive(false);
-              handleUploadDrop(e.dataTransfer.files);
-            }}
-          >
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleUploadFileChange}
-            />
-            <div className="mb-1 text-[9px] font-bold uppercase tracking-wide text-accent-h">
-              Photo for {uploadSkuLabel}
-            </div>
-            {uploadPhase === "idle" ? (
-              <>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-t4">
-                  <path d="M12 16V4m0 0L7 9m5-5 5 5" />
-                  <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-                </svg>
-                <div className="text-sm text-t2">Drop a real photo of this product here</div>
-                <div className="text-[10.5px] text-t4">PNG, JPG, TIFF up to 50MB · at least {MIN_UPLOADS} photo of this exact SKU required</div>
-                <div className="mt-2 flex gap-2">
-                  <Button onClick={openUploadPicker}>Select file</Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <UploadTrainingPanel phase={uploadPhase} progress={uploadProgress} fileNames={uploadFileNames} previews={uploadPreviews} skuLabel={uploadSkuLabel} />
-                {uploadPhase === "done" && (
-                  <Button onClick={openUploadPicker}>Add another photo</Button>
-                )}
-              </>
+          <div className="flex flex-col gap-3">
+            <Card
+              className={`flex flex-col items-center justify-center gap-3 border-dashed p-12 text-center transition-colors ${
+                uploadDragActive ? "border-accent bg-accent-sub/40" : ""
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setUploadDragActive(true);
+              }}
+              onDragLeave={() => setUploadDragActive(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setUploadDragActive(false);
+                handleDropzoneDrop(e.dataTransfer);
+              }}
+            >
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleUploadFileChange}
+              />
+              <div className="mb-1 text-[9px] font-bold uppercase tracking-wide text-accent-h">
+                Photo for {uploadSkuLabel}
+              </div>
+              {uploadPhase === "idle" ? (
+                <>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-t4">
+                    <path d="M12 16V4m0 0L7 9m5-5 5 5" />
+                    <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+                  </svg>
+                  <div className="text-sm text-t2">Drop a real photo of this product here</div>
+                  <div className="text-[10.5px] text-t4">PNG, JPG, TIFF up to 50MB · at least {MIN_UPLOADS} photo of this exact SKU required</div>
+                  <div className="mt-2 flex gap-2">
+                    <Button onClick={openUploadPicker}>Select file</Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <UploadTrainingPanel phase={uploadPhase} progress={uploadProgress} fileNames={uploadFileNames} previews={uploadPreviews} skuLabel={uploadSkuLabel} />
+                  {uploadPhase === "done" && (
+                    <Button onClick={openUploadPicker}>Add another photo</Button>
+                  )}
+                </>
+              )}
+            </Card>
+
+            {uploadNote && (
+              <div className="rounded-md border border-warning/30 bg-warning-sub px-3 py-2 text-[10.5px] text-warning">
+                {uploadNote}
+              </div>
             )}
-          </Card>
+
+            <DemoAssetsPanel selectedLine={productLine} selectedShade={selectedShade} onUse={addDemoPhoto} />
+          </div>
           <Card>
             <CardHeader title="Selected product" />
             <div className="flex items-center gap-3 rounded-lg border border-glass-border bg-s2 p-3">
