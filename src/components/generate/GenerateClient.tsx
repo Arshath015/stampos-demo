@@ -13,7 +13,7 @@ import { ResultsRevealGrid } from "@/components/generate/ResultsRevealGrid";
 import { useSimulatedUpload } from "@/components/ui/useSimulatedUpload";
 import { useObjectUrls } from "@/components/ui/useObjectUrls";
 import { UploadTrainingPanel } from "@/components/ui/UploadTrainingPanel";
-import { generateResults, foundationShades, lipstickShades, foundationSkus, lipstickSkus } from "@/lib/mock-data";
+import { generateResults, foundationShades, lipstickShades, foundationSkus, lipstickSkus, type SkuOption } from "@/lib/mock-data";
 import type { ResultImage } from "@/lib/results";
 
 type ProductLine = "foundation" | "lipstick";
@@ -75,22 +75,49 @@ export function GenerateClient({
   // makes Generate/Review show the correct color+texture per shade instead
   // of a generic reused product. Defaults to the original hero shade.
   const [selectedShade, setSelectedShade] = useState("05");
+  // SKUs the user typed in themselves via "+ Add new SKU" — merged alongside
+  // the catalog SKUs for whichever line they were added under. These have no
+  // curated result pool on disk, so Generate/Review fall back to the rest of
+  // that line's results rather than showing nothing (see shadeScopedResults).
+  const [customSkus, setCustomSkus] = useState<Record<ProductLine, SkuOption[]>>({ foundation: [], lipstick: [] });
   const productLine = productLineFor(category.name);
-  const skuOptions = productLine === "foundation" ? foundationSkus : productLine === "lipstick" ? lipstickSkus : [];
+  const baseSkuOptions = productLine === "foundation" ? foundationSkus : productLine === "lipstick" ? lipstickSkus : [];
+  const skuOptions = productLine ? [...baseSkuOptions, ...customSkus[productLine]] : [];
   const currentSku = skuOptions.find((s) => s.shade === selectedShade) ?? skuOptions[0];
 
   function pickCategory(name: string, score: number) {
     setCategory({ name, score });
     const line = productLineFor(name);
-    const options = line === "foundation" ? foundationSkus : line === "lipstick" ? lipstickSkus : [];
-    if (options.length > 0 && !options.some((o) => o.shade === selectedShade)) {
-      setSelectedShade(options[0].shade);
+    const base = line === "foundation" ? foundationSkus : line === "lipstick" ? lipstickSkus : [];
+    const merged = line ? [...base, ...customSkus[line]] : [];
+    if (merged.length > 0 && !merged.some((o) => o.shade === selectedShade)) {
+      setSelectedShade(merged[0].shade);
     }
   }
 
-  function pickShade(shade: string, line: ProductLine) {
-    setSelectedShade(shade);
-    setProductName(`${skuLabelFor(line)} — Shade ${shade}`);
+  function pickShade(sku: SkuOption, line: ProductLine) {
+    setSelectedShade(sku.shade);
+    setProductName(`${skuLabelFor(line)} — ${sku.label}`);
+  }
+
+  /** Adds a user-typed SKU to the current line and selects it. Reuses an
+   * existing SKU instead of creating a duplicate if the typed identifier
+   * already matches one. No swatch photo of its own (see SkuGlyph) — Configure's
+   * preview falls back to a generic in-line reference photo since there's no
+   * real one for a SKU that was just typed in, not uploaded. */
+  function addCustomSku(rawShade: string) {
+    const shade = rawShade.trim();
+    if (!shade || !productLine) return;
+    const existing = skuOptions.find((s) => s.shade === shade);
+    if (existing) {
+      pickShade(existing, productLine);
+      return;
+    }
+    const label = /^\d+$/.test(shade) ? `Shade ${shade}` : shade;
+    const swatchSrc = productLine === "foundation" ? foundationShades[6].src : lipstickShades[6].src;
+    const sku: SkuOption = { shade, label, swatchSrc };
+    setCustomSkus((prev) => ({ ...prev, [productLine]: [...prev[productLine], sku] }));
+    pickShade(sku, productLine);
   }
 
   // Scope the result pool shown in Generate/Review to the selected shade so
@@ -106,6 +133,14 @@ export function GenerateClient({
       productLine === "lipstick" && results.lipstick.some((r) => r.shade === selectedShade)
         ? results.lipstick.filter((r) => r.shade === selectedShade)
         : results.lipstick,
+  };
+  // Whether the selected SKU has its own curated result files on disk, vs.
+  // falling back to the rest of the line's pool above — surfaced in the
+  // Results header so a freshly-added SKU doesn't silently show generic
+  // images with no explanation.
+  const hasOwnResults = {
+    foundation: results.foundation.some((r) => r.shade === selectedShade),
+    lipstick: results.lipstick.some((r) => r.shade === selectedShade),
   };
 
   const [generating, setGenerating] = useState(false);
@@ -161,6 +196,12 @@ export function GenerateClient({
     setRevealToken((t) => t + 1);
   }
 
+  // Identifies which SKU the Upload step is currently for — switching this
+  // (picking a different shade/category back on the Category step) swaps
+  // out whatever's been uploaded so a different SKU's Upload step doesn't
+  // start pre-loaded with the last SKU's photo. See useSimulatedUpload's
+  // cacheKey doc for why this is a swap, not a hard reset.
+  const uploadCacheKey = productLine ? `${category.name}::${selectedShade}` : category.name;
   const {
     phase: uploadPhase,
     progress: uploadProgress,
@@ -169,9 +210,24 @@ export function GenerateClient({
     openPicker: openUploadPicker,
     inputRef: uploadInputRef,
     handleFileChange: handleUploadFileChange,
-  } = useSimulatedUpload({ onComplete: () => goto(2) });
+    handleDrop: handleUploadDrop,
+  } = useSimulatedUpload({ cacheKey: uploadCacheKey });
   const uploadPreviews = useObjectUrls(uploadFiles);
-  const uploadSkuLabel = currentSku ? `${skuLabelFor(productLine as ProductLine)} — Shade ${currentSku.shade}` : undefined;
+  const uploadSkuLabel = currentSku ? `${skuLabelFor(productLine as ProductLine)} — ${currentSku.label}` : category.name;
+  const [uploadDragActive, setUploadDragActive] = useState(false);
+  const [addingSku, setAddingSku] = useState(false);
+  const [newSkuDraft, setNewSkuDraft] = useState("");
+
+  function commitNewSku() {
+    addCustomSku(newSkuDraft);
+    setNewSkuDraft("");
+    setAddingSku(false);
+  }
+  // At least one real photo of this exact SKU is required before Configure
+  // is reachable — a generic "skip the upload" path would defeat the point
+  // of a per-SKU upload step.
+  const MIN_UPLOADS = 1;
+  const uploadMinMet = uploadFiles.length >= MIN_UPLOADS;
 
   return (
     <div>
@@ -243,22 +299,47 @@ export function GenerateClient({
                   Each shade has its own trained color and texture. Pick which
                   SKU this generation is for.
                 </p>
-                <div className="mb-1 flex flex-wrap gap-2">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
                   {skuOptions.map((sku) => (
                     <button
                       key={sku.shade}
-                      onClick={() => pickShade(sku.shade, productLine as ProductLine)}
+                      onClick={() => pickShade(sku, productLine as ProductLine)}
                       title={sku.label}
                       className={`flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3 text-[11px] font-medium transition-colors ${
                         selectedShade === sku.shade ? "border-accent bg-accent-sub text-accent-h" : "border-border text-t3 hover:border-border-h"
                       }`}
                     >
-                      <span className="relative h-6 w-6 overflow-hidden rounded-full border border-glass-border">
-                        <Image src={sku.swatchSrc} alt="" fill className="object-cover" />
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-glass-border bg-s2 text-t3">
+                        <SkuGlyph size={13} />
                       </span>
                       {sku.label}
                     </button>
                   ))}
+                  {addingSku ? (
+                    <input
+                      autoFocus
+                      value={newSkuDraft}
+                      onChange={(e) => setNewSkuDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitNewSku();
+                        if (e.key === "Escape") {
+                          setNewSkuDraft("");
+                          setAddingSku(false);
+                        }
+                      }}
+                      onBlur={commitNewSku}
+                      placeholder="New shade name or number…"
+                      className="w-44 rounded-full border border-gold bg-transparent px-3 py-1.5 text-[11px] text-t1 outline-none"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setAddingSku(true)}
+                      className="rounded-full border border-dashed border-border px-3 py-1.5 text-[11px] font-medium text-t3 transition-colors hover:border-gold hover:text-gold"
+                    >
+                      + Add new SKU
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -271,8 +352,8 @@ export function GenerateClient({
               style={{ background: `color-mix(in srgb, ${categoryTone(category.score)} 12%, transparent)` }}
             >
               {currentSku && (
-                <span className="relative mx-auto mb-3 block h-16 w-16 overflow-hidden rounded-full border-2 border-glass-border">
-                  <Image src={currentSku.swatchSrc} alt="" fill className="object-cover" />
+                <span className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border-2 border-glass-border bg-s2 text-t3">
+                  <SkuGlyph size={30} />
                 </span>
               )}
               <div className="text-2xl font-black" style={{ color: categoryTone(category.score) }}>
@@ -310,7 +391,21 @@ export function GenerateClient({
 
       {step === 1 && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="flex flex-col items-center justify-center gap-3 border-dashed p-12 text-center">
+          <Card
+            className={`flex flex-col items-center justify-center gap-3 border-dashed p-12 text-center transition-colors ${
+              uploadDragActive ? "border-accent bg-accent-sub/40" : ""
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setUploadDragActive(true);
+            }}
+            onDragLeave={() => setUploadDragActive(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setUploadDragActive(false);
+              handleUploadDrop(e.dataTransfer.files);
+            }}
+          >
             <input
               ref={uploadInputRef}
               type="file"
@@ -319,36 +414,64 @@ export function GenerateClient({
               className="hidden"
               onChange={handleUploadFileChange}
             />
-            {uploadPhase === "idle" || uploadPhase === "done" ? (
+            <div className="mb-1 text-[9px] font-bold uppercase tracking-wide text-accent-h">
+              Photo for {uploadSkuLabel}
+            </div>
+            {uploadPhase === "idle" ? (
               <>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-t4">
                   <path d="M12 16V4m0 0L7 9m5-5 5 5" />
                   <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
                 </svg>
-                <div className="text-sm text-t2">Drop product images here</div>
-                <div className="text-[10.5px] text-t4">PNG, JPG, TIFF up to 50MB · Max 200 per batch</div>
+                <div className="text-sm text-t2">Drop a real photo of this product here</div>
+                <div className="text-[10.5px] text-t4">PNG, JPG, TIFF up to 50MB · at least {MIN_UPLOADS} photo of this exact SKU required</div>
                 <div className="mt-2 flex gap-2">
                   <Button onClick={openUploadPicker}>Select file</Button>
-                  <Button title="Import SKU data from CSV or Google Sheets">Import CSV</Button>
                 </div>
               </>
             ) : (
-              <UploadTrainingPanel phase={uploadPhase} progress={uploadProgress} fileNames={uploadFileNames} previews={uploadPreviews} skuLabel={uploadSkuLabel} />
+              <>
+                <UploadTrainingPanel phase={uploadPhase} progress={uploadProgress} fileNames={uploadFileNames} previews={uploadPreviews} skuLabel={uploadSkuLabel} />
+                {uploadPhase === "done" && (
+                  <Button onClick={openUploadPicker}>Add another photo</Button>
+                )}
+              </>
             )}
           </Card>
           <Card>
-            <CardHeader title="Recent uploads" />
-            <ImageResultGrid
-              columns={3}
-              aspect="aspect-square"
-              images={[...foundationShades.slice(0, 3), ...lipstickShades.slice(0, 3)].map((s, i) => ({
-                id: `upload-${i}`,
-                src: s.src,
-                status: "ai-enhanced" as const,
-                statusLabel: "Ready",
-              }))}
-            />
-            <Button variant="primary" onClick={() => goto(2)} className="mt-4 w-full justify-center">
+            <CardHeader title="Selected product" />
+            <div className="flex items-center gap-3 rounded-lg border border-glass-border bg-s2 p-3">
+              {currentSku && (
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-glass-border bg-s3 text-t3">
+                  {uploadPreviews.length > 0 ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- blob: object URL for a real upload
+                    <img src={uploadPreviews[0]} alt="" className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    <SkuGlyph size={26} />
+                  )}
+                </span>
+              )}
+              <div>
+                <div className="text-sm font-bold text-t1">{uploadSkuLabel}</div>
+                <div className="text-[11px] text-t4">
+                  {category.name === "Foundation" ? "AOF Dewy Foundation" : category.name}
+                </div>
+              </div>
+            </div>
+            <p className="mb-1 mt-4 text-[11px] text-t4">
+              {uploadMinMet
+                ? `${uploadFiles.length} photo${uploadFiles.length === 1 ? "" : "s"} uploaded for this SKU.`
+                : `Upload at least ${MIN_UPLOADS} real photo of ${uploadSkuLabel} before continuing.`}
+            </p>
+            <p className="mb-4 text-[9px] tracking-wide text-t4">
+              {uploadFiles.length} of {MIN_UPLOADS} minimum uploaded
+            </p>
+            <Button
+              variant="primary"
+              disabled={!uploadMinMet}
+              onClick={() => uploadMinMet && goto(2)}
+              className={`w-full justify-center ${!uploadMinMet ? "cursor-not-allowed opacity-40 hover:translate-y-0 hover:shadow-none" : ""}`}
+            >
               Continue to Configure
             </Button>
           </Card>
@@ -410,7 +533,7 @@ export function GenerateClient({
                 <div className="text-[10px] font-bold uppercase tracking-wide text-white/70">AI Preview</div>
                 <div className="text-[11px] text-white">
                   {currentSku
-                    ? `${skuLabelFor(productLine as ProductLine)} — Shade ${currentSku.shade} · Full front + back · ${background} BG · Softbox`
+                    ? `${skuLabelFor(productLine as ProductLine)} — ${currentSku.label} · Full front + back · ${background} BG · Softbox`
                     : `${category.name} · Full front + back · ${background} BG · Softbox`}
                 </div>
               </div>
@@ -448,9 +571,14 @@ export function GenerateClient({
                   <div className="text-sm font-bold text-t1">Results</div>
                   <div className="text-[11px] text-t4">
                     {activeProduct === "foundation"
-                      ? `AOF Dewy Foundation${productLine === "foundation" ? ` — Shade ${selectedShade}` : ""} · ${shadeScopedResults.foundation.length} images`
-                      : `Ultrastay Transferproof Lipstick${productLine === "lipstick" ? ` — Shade ${selectedShade}` : ""} · ${shadeScopedResults.lipstick.length} images`}
+                      ? `AOF Dewy Foundation${productLine === "foundation" && currentSku ? ` — ${currentSku.label}` : ""} · ${shadeScopedResults.foundation.length} images`
+                      : `Ultrastay Transferproof Lipstick${productLine === "lipstick" && currentSku ? ` — ${currentSku.label}` : ""} · ${shadeScopedResults.lipstick.length} images`}
                   </div>
+                  {productLine === activeProduct && !hasOwnResults[activeProduct] && (
+                    <div className="mt-0.5 text-[10.5px] text-warning">
+                      No curated results for this SKU yet — showing the rest of {activeProduct === "foundation" ? "AOF Dewy Foundation" : "Ultrastay Transferproof Lipstick"}&apos;s pool until dedicated results are generated.
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => goto(2)}>Back to Configure</Button>
@@ -527,12 +655,29 @@ export function GenerateClient({
           images={shadeScopedResults[activeProduct]}
           productLabel={
             activeProduct === "foundation"
-              ? `AOF Dewy Foundation${productLine === "foundation" ? ` — Shade ${selectedShade}` : ""}`
-              : `Ultrastay Transferproof Lipstick${productLine === "lipstick" ? ` — Shade ${selectedShade}` : ""}`
+              ? `AOF Dewy Foundation${productLine === "foundation" && currentSku ? ` — ${currentSku.label}` : ""}`
+              : `Ultrastay Transferproof Lipstick${productLine === "lipstick" && currentSku ? ` — ${currentSku.label}` : ""}`
           }
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Generic product-bottle glyph, standing in for a shade's swatch photo
+ * anywhere before the user has actually uploaded something for this
+ * generation (the shade chips and "Selected category" panel on the Category
+ * step). Deliberately not the shade's real reference photo — showing that
+ * before an upload happened is the same "implied but not actually provided"
+ * bug the onboarding flow had.
+ */
+function SkuGlyph({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2h6v3.2c0 .5.2 1 .6 1.4l1.4 1.4c.6.6 1 1.5 1 2.4V20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10.4c0-.9.4-1.8 1-2.4l1.4-1.4c.4-.4.6-.9.6-1.4Z" />
+      <path d="M8 13h8" />
+    </svg>
   );
 }
 
@@ -727,6 +872,11 @@ function ReviewStep({
             <SliderRow label="Hue" value="0°" />
             <SliderRow label="Saturation" value="100%" />
             <SliderRow label="Brightness" value="50%" />
+            <div className="mb-1.5 mt-3 text-[10.5px] font-semibold text-t3">RGB channels</div>
+            <SliderRow label="Red" value="0" />
+            <SliderRow label="Green" value="0" />
+            <SliderRow label="Blue" value="0" />
+            <SliderRow label="Luminance" value="50%" />
             <Button size="sm" className="mt-2">Apply corrections</Button>
           </Card>
         </div>

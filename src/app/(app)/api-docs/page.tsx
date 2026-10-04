@@ -23,9 +23,9 @@ const ENDPOINTS = [
 ];
 
 const WEBHOOKS = [
-  { name: "Generation complete", url: "https://api.ajio.com/hooks/stamp-gen", meta: "Last triggered 12 min ago · 342 deliveries · 99.7% success" },
-  { name: "Review completed", url: "https://api.ajio.com/hooks/stamp-review", meta: "Last triggered 2h ago · 89 deliveries · 100% success" },
-  { name: "Batch failed", url: "https://api.ajio.com/hooks/stamp-error", meta: "Last triggered 3d ago · 4 deliveries · 100% success" },
+  { name: "Generation complete", url: "https://api.sugarcosmetics.com/hooks/stamp-gen", meta: "Last triggered 12 min ago · 342 deliveries · 99.7% success" },
+  { name: "Review completed", url: "https://api.sugarcosmetics.com/hooks/stamp-review", meta: "Last triggered 2h ago · 89 deliveries · 100% success" },
+  { name: "Batch failed", url: "https://api.sugarcosmetics.com/hooks/stamp-error", meta: "Last triggered 3d ago · 4 deliveries · 100% success" },
 ];
 
 const DELIVERIES = [
@@ -258,8 +258,8 @@ const stamp = new StampOS({ apiKey: 'sk_prod_...' });
 
 // Generate catalog images
 const result = await stamp.images.generate({
-  sku: 'SKU-4821',
-  brand: 'ajio-private-labels',
+  sku: 'AOF-FND-01-05',
+  brand: 'sugar-cosmetics',
   style: 'editorial',
   count: 4
 });`}

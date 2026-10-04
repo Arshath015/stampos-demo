@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# STAMP OS — AI Catalog Engine (Demo)
 
-## Getting Started
+**Live demo:** https://stampos-demo.vercel.app
 
-First, run the development server:
+STAMP OS is an internal tool concept for SUGAR Cosmetics: upload reference
+photos for a product SKU, "train" a model on them, and generate a full set
+of catalog-ready images (studio, texture, flatlay, closeup, hand, model, and
+environment shots) without a physical photoshoot. This repo is a front-end
+demo of that product — the full UI and user flow, built to show what the
+real tool would feel like to use.
+
+> **Note:** This is a frontend demo with a simulated AI backend. Uploads,
+> "training," and generation are real UI flows with real file handling and
+> realistic timing/progress/retry behavior, but the actual image generation
+> is not live — results are a pre-rendered image set served per SKU/shade
+> rather than produced by a live model.
+
+## What the demo shows
+
+- **Multi-SKU result system** — results for two product lines (foundation
+  and lipstick), each with multiple shades and ~7 shot types per shade,
+  dynamically read from disk and grouped/scored per shot type
+  (`src/lib/results.ts`).
+- **Simulated AI training flow** — onboarding and generate screens walk
+  through an upload → training → generation sequence with realistic staged
+  progress, not an instant stub.
+- **Real file upload** — actual drag/drop and file-picker upload handling
+  (`UploadTrainingPanel`, `useSimulatedUpload`), not a mocked input.
+- **Retry layer** — simulated failure/retry handling so the flow behaves
+  like a real pipeline that can fail a step and recover, rather than a
+  happy-path-only demo.
+- Full supporting app shell: dashboard, brand, review, products, batches,
+  analytics, team, settings, billing, and API docs screens.
+
+## Tech stack
+
+- [Next.js](https://nextjs.org) (App Router, Turbopack)
+- [TypeScript](https://www.typescriptlang.org)
+- [Tailwind CSS](https://tailwindcss.com)
+- Deployed on [Vercel](https://vercel.com)
+
+## Running locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build   # production build
+npm run start   # run the production build locally
+npm run lint
+```

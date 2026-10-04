@@ -11,6 +11,17 @@ export interface SimulatedUploadOptions {
   trainingMs?: number;
   /** Called once the whole sequence settles into "done". */
   onComplete?: () => void;
+  /**
+   * Identifies which "thing" (e.g. a specific SKU/shade) the current upload
+   * belongs to. When this changes, the in-progress upload is swapped out
+   * rather than left showing under the new identity — a photo uploaded for
+   * Shade 05 must not still appear once the caller switches to Shade 07.
+   * Whatever was uploaded under the outgoing key is cached (not discarded),
+   * so switching back to a key visited earlier in this session restores it
+   * instead of forcing a re-upload. Omit if the caller only ever handles one
+   * upload at a time (e.g. Category Training's single bulk dropzone).
+   */
+  cacheKey?: string;
 }
 
 /**
@@ -26,7 +37,7 @@ export interface SimulatedUploadOptions {
  * Upload step, Category Training's bulk-upload zone) so the illusion is
  * consistent rather than a one-off screen.
  */
-export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComplete }: SimulatedUploadOptions = {}) {
+export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComplete, cacheKey }: SimulatedUploadOptions = {}) {
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [progress, setProgress] = useState(0);
   const [fileNames, setFileNames] = useState<string[]>([]);
@@ -35,13 +46,50 @@ export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComple
   const [files, setFiles] = useState<File[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Per-cacheKey snapshots of what's been uploaded so far this session —
+  // File objects only (cheap to hold, nothing to revoke). The actual blob:
+  // object URLs live downstream in the caller's useObjectUrls(files), which
+  // already revokes its old URLs whenever the `files` array we hand it
+  // changes identity — swapping `files` here is what drives that cleanup.
+  const cache = useRef<Map<string, { files: File[]; fileNames: string[] }>>(new Map());
+  const prevKeyRef = useRef(cacheKey);
 
   useEffect(() => {
     return () => timeouts.current.forEach(clearTimeout);
   }, []);
 
+  useEffect(() => {
+    if (cacheKey === undefined || cacheKey === prevKeyRef.current) return;
+    timeouts.current.forEach(clearTimeout);
+    timeouts.current = [];
+    if (prevKeyRef.current !== undefined) {
+      cache.current.set(prevKeyRef.current, { files, fileNames });
+    }
+    const restored = cache.current.get(cacheKey);
+    setFiles(restored?.files ?? []);
+    setFileNames(restored?.fileNames ?? []);
+    setPhase(restored && restored.files.length > 0 ? "done" : "idle");
+    setProgress(0);
+    prevKeyRef.current = cacheKey;
+    // Only cacheKey should retrigger this swap — files/fileNames are read
+    // for their current (pre-swap) values, not watched.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey]);
+
   function openPicker() {
     inputRef.current?.click();
+  }
+
+  /** Shared by both the file picker and drag-and-drop — filters to images
+   * and kicks off the upload→training sequence. No-op on an empty or
+   * all-non-image selection so a cancelled picker or a bad drop stays idle. */
+  function commitFiles(all: File[]) {
+    if (all.length === 0) return;
+    const picked = all.filter((f) => f.type.startsWith("image/"));
+    if (picked.length === 0) return;
+    setFiles((prev) => [...prev, ...picked]);
+    setFileNames((prev) => [...prev, ...picked.map((f) => f.name)]);
+    runSequence();
   }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -51,12 +99,12 @@ export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComple
     // reference) sees 0 and silently drops every real selection.
     const all = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = ""; // allow re-selecting the same file later
-    if (all.length === 0) return; // user cancelled — do nothing
-    const picked = all.filter((f) => f.type.startsWith("image/"));
-    if (picked.length === 0) return; // non-image selection — no-op, stay idle
-    setFiles(picked);
-    setFileNames(picked.map((f) => f.name));
-    runSequence();
+    commitFiles(all);
+  }
+
+  /** Drop handler for a drag-and-drop zone — pass `e.dataTransfer.files`. */
+  function handleDrop(fileList: FileList | null) {
+    commitFiles(fileList ? Array.from(fileList) : []);
   }
 
   function runSequence() {
@@ -113,5 +161,6 @@ export function useSimulatedUpload({ uploadMs = 900, trainingMs = 1600, onComple
     reset,
     inputRef,
     handleFileChange,
+    handleDrop,
   };
 }

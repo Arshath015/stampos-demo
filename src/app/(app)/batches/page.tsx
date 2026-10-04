@@ -38,7 +38,6 @@ export default function BatchesPage() {
         <select className="rounded-md border border-border bg-glass px-3 py-1.5 text-[11px] text-t2 outline-none">
           <option>All categories</option>
           <option>AOF Dewy Foundation</option>
-          <option>Concealer</option>
           <option>Ultrastay Lipstick</option>
         </select>
         <input

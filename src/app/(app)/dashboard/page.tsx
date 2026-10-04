@@ -10,14 +10,9 @@ import { getResultImages } from "@/lib/results";
 // so dropping in new AI output files works in production without a rebuild.
 export const dynamic = "force-dynamic";
 
-const RECENT_META = [
-  { status: "approved" as const, confidence: 92, title: "SUGAR Lip Edit", meta: "SKU-4821 · Studio White" },
-  { status: "approved" as const, confidence: 89, title: "GlowCo Skin Tint", meta: "SKU-3392 · Gray BG" },
-  { status: "pending" as const, confidence: 78, title: "SUGAR Cosmetics Street", meta: "SKU-7714 · Full Body" },
-  { status: "ai-enhanced" as const, confidence: 91, title: "SUGAR Runway Edit", meta: "SKU-2208 · Dynamic" },
-  { status: "approved" as const, confidence: 88, title: "GlowCo Casual", meta: "SKU-1455 · Studio White" },
-  { status: "pending" as const, confidence: 76, title: "SUGAR SS26 Drop", meta: "SKU-9081 · Outdoor" },
-];
+// Cycled onto the real results pool below in display order — length must
+// match (or be shorter than) however many recent generations are shown.
+const RECENT_STATUSES = ["approved", "approved", "pending", "ai-enhanced", "approved", "pending"] as const;
 
 const gauges = [
   { label: "Brand", value: 82, color: "var(--success)" },
@@ -29,12 +24,25 @@ export default function DashboardPage() {
   // "Recent generations" must show real AI output, never the raw uploaded
   // product reference photo — cycle through the full results pool (all
   // foundation + lipstick shot-types) rather than a single repeated image.
-  const resultsPool = [...getResultImages("foundation"), ...getResultImages("lipstick")];
-  const recentGenerations = RECENT_META.map((meta, i) => ({
-    id: `recent-${i}`,
-    src: resultsPool.length > 0 ? resultsPool[i % resultsPool.length].src : "",
-    ...meta,
-  })).filter((img) => img.src);
+  // Title/meta are built from each image's own real shade + shot type
+  // rather than a separately-authored list, so the caption can never claim
+  // a different product than the thumbnail actually shows.
+  const resultsPool = [
+    ...getResultImages("foundation").map((r) => ({ ...r, product: "AOF Dewy Foundation" })),
+    ...getResultImages("lipstick").map((r) => ({ ...r, product: "Ultrastay Transferproof Lipstick" })),
+  ];
+  const recentGenerations = RECENT_STATUSES.map((status, i) => {
+    const img = resultsPool.length > 0 ? resultsPool[i % resultsPool.length] : null;
+    if (!img) return null;
+    return {
+      id: `recent-${i}`,
+      src: img.src,
+      status,
+      confidence: img.confidence,
+      title: `${img.product} — Shade ${img.shade}`,
+      meta: `${img.shotType} · ${img.confidence}% confidence`,
+    };
+  }).filter((img) => img !== null);
 
   return (
     <div>
@@ -120,13 +128,13 @@ export default function DashboardPage() {
           <CardHeader title="AI recommendations" action={<Badge color="purple">3 actions</Badge>} />
           <ul className="flex flex-col gap-3 text-[11.5px] text-t2">
             <Rec dot="danger">
-              Add 15+ refs for <b>Ethnic</b> — 58% approval
+              Add 15+ refs for <b>Eyeshadow Palette</b> — 45% approval
             </Rec>
             <Rec dot="warning">
               Try <b>Rose-Gold backdrop</b> for Lipstick — 12% higher
             </Rec>
             <Rec dot="warning">
-              Schedule <b>Jewellery</b> re-training — 41%
+              Schedule <b>Makeup Brushes</b> re-training — 15%
             </Rec>
           </ul>
         </Card>

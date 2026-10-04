@@ -5,9 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
-import { skuTable, foundationShades, lipstickShades } from "@/lib/mock-data";
-
-const thumbs = [foundationShades[8], lipstickShades[9], lipstickShades[10], lipstickShades[11], lipstickShades[0]];
+import { catalogSkus } from "@/lib/mock-data";
 
 export default function ProductsPage() {
   return (
@@ -15,7 +13,7 @@ export default function ProductsPage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="text-lg font-extrabold text-t1">My Products</div>
-          <div className="text-[11px] text-t4">12 products</div>
+          <div className="text-[11px] text-t4">2 products · {catalogSkus.length} SKUs</div>
         </div>
         <Link href="/generate">
           <Button variant="primary">New Product</Button>
@@ -26,10 +24,7 @@ export default function ProductsPage() {
         <select className="rounded-md border border-border bg-glass px-3 py-1.5 text-[11px] text-t2 outline-none">
           <option>All categories</option>
           <option>AOF Dewy Foundation</option>
-          <option>Concealer</option>
           <option>Ultrastay Lipstick</option>
-          <option>Lip Liner</option>
-          <option>Accessories</option>
         </select>
         <select className="rounded-md border border-border bg-glass px-3 py-1.5 text-[11px] text-t2 outline-none">
           <option>All statuses</option>
@@ -55,15 +50,15 @@ export default function ProductsPage() {
       </div>
 
       <DataTable
-        rowKey={(r) => r.product}
-        rows={skuTable}
+        rowKey={(r) => r.skuId}
+        rows={catalogSkus}
         columns={[
           {
             header: "Product",
             render: (r) => (
               <div className="flex items-center gap-2.5">
                 <div className="relative h-10 w-8 shrink-0 overflow-hidden rounded">
-                  <Image src={thumbs[skuTable.indexOf(r) % thumbs.length].src} alt="" fill className="object-cover" />
+                  <Image src={r.thumbSrc} alt="" fill className="object-cover" />
                 </div>
                 <div>
                   <div className="font-semibold text-t1">{r.product}</div>
@@ -71,6 +66,14 @@ export default function ProductsPage() {
                 </div>
               </div>
             ),
+          },
+          {
+            header: "Product ID",
+            render: (r) => <span className="font-mono text-[10.5px] text-t3">{r.productId}</span>,
+          },
+          {
+            header: "SKU ID",
+            render: (r) => <span className="font-mono text-[10.5px] text-t3">{r.skuId}</span>,
           },
           { header: "Category", render: (r) => r.category },
           { header: "Batches", align: "center", render: (r) => r.batches },

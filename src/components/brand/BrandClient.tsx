@@ -36,7 +36,7 @@ export function BrandClient({
             className="flex h-14 w-14 items-center justify-center rounded-lg text-lg font-black text-white"
             style={{ background: "linear-gradient(135deg,#3B82F6,#1D4ED8)" }}
           >
-            MF
+            SC
           </div>
           <div>
             <div className="text-lg font-extrabold text-t1">{brand.name}</div>

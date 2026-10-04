@@ -41,6 +41,9 @@ const RING_SETS: Record<string, Ring[]> = {
     { width: 380, height: 380, top: -90, left: -90 },
     { width: 480, height: 480, bottom: -160, right: -120, borderColor: "rgba(167,139,250,0.12)" },
   ],
+  // onboarding confirmation screen — gradient wash + dot grid only, no rings
+  // (full-bleed centered layout, not a split panel like the others)
+  s7: [],
 };
 
 export type AbstractBackgroundVariant = keyof typeof RING_SETS;

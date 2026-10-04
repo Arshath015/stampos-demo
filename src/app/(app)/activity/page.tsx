@@ -13,7 +13,7 @@ const EVENTS = [
   { time: "Yesterday", color: "#A855F7", body: <><strong>Meera Sharma</strong> invited <strong>Priya Singh</strong> as Creator</>, meta: "Team · Invitation sent" },
   { time: "2 days ago", color: "var(--accent)", body: <><strong>System</strong> completed brand model retrain: GlowCo v3.2 — accuracy improved 4.2%</>, meta: "AI Engine · Model training" },
   { time: "2 days ago", color: "var(--success)", body: <><strong>Deepak Patel</strong> uploaded 48 reference images for SUGAR Cosmetics brand training</>, meta: "Brand · Training data" },
-  { time: "3 days ago", color: "var(--warning)", body: <><strong>System</strong> webhook delivery failed: api.ajio.com/hooks/stamp-error — retried successfully</>, meta: "API · Webhook" },
+  { time: "3 days ago", color: "var(--warning)", body: <><strong>System</strong> webhook delivery failed: api.sugarcosmetics.com/hooks/stamp-error — retried successfully</>, meta: "API · Webhook" },
 ];
 
 export default function ActivityPage() {

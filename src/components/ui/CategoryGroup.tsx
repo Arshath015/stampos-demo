@@ -40,7 +40,7 @@ export function CategoryGroup({
   }
 
   return (
-    <div className="mb-2.5 rounded-lg border border-border bg-glass p-3.5">
+    <div className="h-fit rounded-lg border border-border bg-glass p-3.5">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -117,25 +117,29 @@ export function CategorySection({
   }
 
   return (
-    <div className="mb-6">
+    <div className="mb-9">
       <div
-        className="mb-2.5 text-[11px] font-bold uppercase tracking-[1.5px]"
+        className="mb-3.5 text-[11px] font-bold uppercase tracking-[1.5px]"
         style={{ color: accent }}
       >
         {label}
       </div>
-      {groups.map((group) => (
-        <CategoryGroup
-          key={group.title}
-          title={group.title}
-          chips={group.chips}
-          defaultSelected={defaultSelected?.[group.title]}
-        />
-      ))}
+      {groups.length > 0 && (
+        <div className="mb-3 grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {groups.map((group) => (
+            <CategoryGroup
+              key={group.title}
+              title={group.title}
+              chips={group.chips}
+              defaultSelected={defaultSelected?.[group.title]}
+            />
+          ))}
+        </div>
+      )}
       <button
         type="button"
         onClick={addGroup}
-        className="mt-1 rounded-md border border-dashed border-border px-2.5 py-1 text-[11px] font-semibold text-t3 transition-colors hover:text-t1"
+        className="rounded-md border border-dashed border-border px-2.5 py-1 text-[11px] font-semibold text-t3 transition-colors hover:text-t1"
         style={{ borderColor: "var(--border)" }}
       >
         + Add category group

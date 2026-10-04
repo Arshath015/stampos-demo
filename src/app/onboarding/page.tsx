@@ -2,7 +2,6 @@
 
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import {
   OnboardingShell,
   OnboardingSplit,
@@ -13,7 +12,7 @@ import { AbstractBackground } from "@/components/ui/AbstractBackground";
 import { RadioCard } from "@/components/ui/RadioCard";
 import { CategorySection } from "@/components/ui/CategoryGroup";
 import { useObjectUrls } from "@/components/ui/useObjectUrls";
-import { categoryTaxonomy, defaultSelectedChips, foundationShades, lipstickShades } from "@/lib/mock-data";
+import { categoryTaxonomy, defaultSelectedChips } from "@/lib/mock-data";
 
 const ROLES = [
   { value: "photographer", title: "Photographer", desc: "I shoot product images for brands" },
@@ -35,9 +34,10 @@ const IMAGE_TYPES = [
   { value: "later", title: "Decide later", desc: "Choose per generation" },
 ];
 
-// Substitutes for the prototype's IMG_POOL placeholder photos — same slots,
-// real product shade images instead of stock photography.
-const REF_IMAGES = [...lipstickShades.slice(0, 6), ...foundationShades.slice(0, 6)];
+// Accent colors assigned to industries added beyond the built-in
+// gold (Beauty & Cosmetics) / purple (Fashion & Apparel) pair — cycles if
+// someone adds more than four.
+const NEW_INDUSTRY_ACCENTS = ["#2DD4BF", "#F472B6", "#60A5FA", "#FB923C"];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -55,6 +55,18 @@ export default function OnboardingPage() {
   const logoPreviews = useObjectUrls(logoFiles);
   const refPreviews = useObjectUrls(refFiles);
   const refPickerRef = useRef<HTMLInputElement | null>(null);
+  // Top-level industries/verticals on the "what does your brand sell" step —
+  // seeded from the built-in taxonomy, extendable with brand-new industries
+  // beyond Beauty/Fashion (e.g. "Skincare", "Home Goods").
+  const [industries, setIndustries] = useState(categoryTaxonomy);
+
+  function addIndustry() {
+    const name = window.prompt("Name this industry:");
+    const trimmed = name?.trim();
+    if (!trimmed) return;
+    const accent = NEW_INDUSTRY_ACCENTS[(industries.length - 2) % NEW_INDUSTRY_ACCENTS.length];
+    setIndustries((prev) => [...prev, { label: trimmed, accent, subgroups: [] }]);
+  }
 
   const last = step === ONBOARDING_STEPS.length - 1;
   function next() {
@@ -185,17 +197,17 @@ export default function OnboardingPage() {
                 "radial-gradient(circle at 30% 30%, rgba(201,169,110,0.5), transparent 45%), radial-gradient(circle at 75% 65%, rgba(167,139,250,0.35), transparent 50%)",
             }}
           />
-          <div className="relative z-[1] w-full max-w-[720px] text-center">
+          <div className="relative z-[1] w-full max-w-6xl text-center">
             <StepIndicator total={7} current={2} center />
             <h1 className="mb-3 font-serif text-4xl font-light leading-[1.2] tracking-tight text-[#f8f8f2]">
               What does your brand <em className="text-gold not-italic">sell</em>?
             </h1>
-            <p className="mb-8 text-[13px] leading-relaxed text-white/50">
+            <p className="mb-10 text-[13px] leading-relaxed text-white/50">
               Select categories — AI trains a separate model per segment for
               higher accuracy.
             </p>
             <div className="text-left">
-              {categoryTaxonomy.map((group) => (
+              {industries.map((group) => (
                 <CategorySection
                   key={group.label}
                   label={group.label}
@@ -204,6 +216,16 @@ export default function OnboardingPage() {
                   defaultSelected={group.label === "Beauty & Cosmetics" ? defaultSelectedChips : undefined}
                 />
               ))}
+              <button
+                type="button"
+                onClick={addIndustry}
+                className="mb-8 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 py-5 text-[12px] font-semibold uppercase tracking-wide text-white/45 transition-colors hover:border-gold hover:text-gold"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Add new industry
+              </button>
             </div>
             <p className="mb-3 text-[10px] tracking-wide text-white/35">
               You can add more categories later from Brand Settings
@@ -280,20 +302,22 @@ export default function OnboardingPage() {
 
       {step === 4 && (
         <OnboardingSplit
-          overlay={null}
+          overlay={refPreviews.length > 0 ? null : "linear-gradient(135deg,rgba(10,10,11,0.5),rgba(10,10,11,0.8))"}
           visClassName="bg-[#0d0d0e]"
           vis={
             <>
-              <div className="grid max-w-[400px] grid-cols-2 gap-2 p-12">
-                {(refPreviews.length > 0 ? refPreviews : REF_IMAGES.slice(0, 4).map((i) => i.src))
-                  .slice(0, 4)
-                  .map((src, i) => (
+              {refPreviews.length > 0 ? (
+                <div className="grid max-w-[400px] grid-cols-2 gap-2 p-12">
+                  {refPreviews.slice(0, 4).map((src, i) => (
                     <div key={i} className="aspect-[3/4] overflow-hidden rounded-lg border border-gold/30">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- may be a blob: object URL for a real upload */}
+                      {/* eslint-disable-next-line @next/next/no-img-element -- blob: object URL for a real upload */}
                       <img src={src} alt="" className="h-full w-full object-cover" />
                     </div>
                   ))}
-              </div>
+                </div>
+              ) : (
+                <AbstractBackground variant="s4" />
+              )}
               <div className="absolute bottom-12 left-12 z-[3]">
                 <div className="text-[9px] uppercase tracking-[2px] text-white/40">
                   Your references
@@ -363,18 +387,18 @@ export default function OnboardingPage() {
           vis={
             <>
               <AbstractBackground variant="s5" />
-              <div className="absolute bottom-12 left-12 z-[2] text-white">
-                <div className="mb-3 text-[9px] uppercase tracking-[3px] text-white/40">
-                  Your Uploaded References
-                </div>
-                <div className="flex gap-3">
-                  {(refPreviews.length > 0 ? refPreviews : REF_IMAGES.slice(0, 3).map((i) => i.src))
-                    .slice(0, 3)
-                    .map((src, i) => (
+              {refPreviews.length > 0 && (
+                <div className="absolute bottom-12 left-12 z-[2] text-white">
+                  <div className="mb-3 text-[9px] uppercase tracking-[3px] text-white/40">
+                    Your Uploaded References
+                  </div>
+                  <div className="flex gap-3">
+                    {refPreviews.slice(0, 3).map((src, i) => (
                       <RefThumb key={i} src={src} label={["On-model", "Flat lay", "Product"][i]} highlight={i === 0} />
                     ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           }
         >
@@ -426,12 +450,8 @@ export default function OnboardingPage() {
 
       {step === 6 && (
         <div className="relative flex min-h-screen w-full items-center justify-center">
-          <div className="pointer-events-none fixed inset-0 z-0 grid grid-cols-5 gap-[3px] opacity-[0.04]">
-            {REF_IMAGES.slice(3, 8).map((img) => (
-              <div key={img.src} className="relative h-full w-full">
-                <Image src={img.src} alt="" fill className="object-cover" />
-              </div>
-            ))}
+          <div className="pointer-events-none fixed inset-0 z-0 opacity-30">
+            <AbstractBackground variant="s7" />
           </div>
           <div className="relative z-[2] max-w-[560px] px-10 text-center">
             <StepIndicator total={7} current={6} center />

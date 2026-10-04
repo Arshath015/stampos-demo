@@ -21,7 +21,7 @@ const TOP_PERFORMERS = [
   { rank: 1, name: "SUGAR Cosmetics", value: "89%", delta: "+4%", rankColor: "var(--success)", badge: "green" as const },
   { rank: 2, name: "GlowCo", value: "91%", delta: "+2%", rankColor: "var(--accent-h)", badge: "green" as const },
   { rank: 3, name: "FabIndia", value: "88%", delta: "+1%", rankColor: "var(--warning)", badge: "blue" as const },
-  { rank: 4, name: "SUGAR Cosmetics", value: "76%", delta: "-2%", rankColor: "var(--t4)", badge: "yellow" as const, warn: true },
+  { rank: 4, name: "Mamaearth", value: "76%", delta: "-2%", rankColor: "var(--t4)", badge: "yellow" as const, warn: true },
 ];
 
 export default function AnalyticsPage() {

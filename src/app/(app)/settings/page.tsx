@@ -107,13 +107,13 @@ export default function SettingsPage() {
               </Row>
               <Row label="Domain auto-join">
                 <div className="flex items-center gap-1.5">
-                  <code className="rounded bg-s2 px-2 py-0.5 text-[10px]">@ajio.com</code>
+                  <code className="rounded bg-s2 px-2 py-0.5 text-[10px]">@sugarcosmetics.com</code>
                   <Badge color="green">Enabled</Badge>
                 </div>
               </Row>
               <Row label="Invite link">
                 <div className="flex items-center gap-1.5">
-                  <code className="rounded bg-s2 px-2 py-0.5 text-[10px]">stampos.app/join/ajio-f8k2</code>
+                  <code className="rounded bg-s2 px-2 py-0.5 text-[10px]">stampos.app/join/sugar-f8k2</code>
                   <Button size="sm">Copy</Button>
                 </div>
               </Row>

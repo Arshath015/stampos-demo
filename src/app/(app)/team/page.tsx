@@ -11,14 +11,14 @@ const STATS = [
 ];
 
 const MEMBERS: { name: string; email: string; initials: string; grad: string; role: string; badge: BadgeColor | "custom"; customColor?: string; lastActive: string; isYou?: boolean }[] = [
-  { name: "Meera Sharma", email: "meera@ajio.com", initials: "MS", grad: "from-[#6366F1] to-[#8B5CF6]", role: "Org Admin", badge: "purple", lastActive: "Now", isYou: true },
-  { name: "Aisha Rao", email: "aisha@ajio.com", initials: "AR", grad: "from-[#F59E0B] to-[#D97706]", role: "Reviewer L1", badge: "green", lastActive: "2h ago" },
-  { name: "Vikram Kumar", email: "vikram@ajio.com", initials: "VK", grad: "from-[#10B981] to-[#059669]", role: "Reviewer L1", badge: "green", lastActive: "5h ago" },
-  { name: "Priya Singh", email: "priya@ajio.com", initials: "PS", grad: "from-[#EC4899] to-[#DB2777]", role: "Creator", badge: "blue", lastActive: "1d ago" },
-  { name: "Arjun Joshi", email: "arjun@ajio.com", initials: "AJ", grad: "from-[#3B82F6] to-[#2563EB]", role: "Creator", badge: "blue", lastActive: "3h ago" },
-  { name: "Kavya Desai", email: "kavya@ajio.com", initials: "KD", grad: "from-[#EF4444] to-[#DC2626]", role: "Approver L2", badge: "custom", customColor: "#EF4444", lastActive: "1h ago" },
-  { name: "Deepak Patel", email: "deepak@ajio.com", initials: "DP", grad: "from-[#14B8A6] to-[#0D9488]", role: "Brand Manager", badge: "yellow", lastActive: "6h ago" },
-  { name: "Ravi Nair", email: "ravi@ajio.com", initials: "RN", grad: "from-[#7C3AED] to-[#6D28D9]", role: "API Manager", badge: "custom", customColor: "#14B8A6", lastActive: "2d ago" },
+  { name: "Meera Sharma", email: "meera@sugarcosmetics.com", initials: "MS", grad: "from-[#6366F1] to-[#8B5CF6]", role: "Org Admin", badge: "purple", lastActive: "Now", isYou: true },
+  { name: "Aisha Rao", email: "aisha@sugarcosmetics.com", initials: "AR", grad: "from-[#F59E0B] to-[#D97706]", role: "Reviewer L1", badge: "green", lastActive: "2h ago" },
+  { name: "Vikram Kumar", email: "vikram@sugarcosmetics.com", initials: "VK", grad: "from-[#10B981] to-[#059669]", role: "Reviewer L1", badge: "green", lastActive: "5h ago" },
+  { name: "Priya Singh", email: "priya@sugarcosmetics.com", initials: "PS", grad: "from-[#EC4899] to-[#DB2777]", role: "Creator", badge: "blue", lastActive: "1d ago" },
+  { name: "Arjun Joshi", email: "arjun@sugarcosmetics.com", initials: "AJ", grad: "from-[#3B82F6] to-[#2563EB]", role: "Creator", badge: "blue", lastActive: "3h ago" },
+  { name: "Kavya Desai", email: "kavya@sugarcosmetics.com", initials: "KD", grad: "from-[#EF4444] to-[#DC2626]", role: "Approver L2", badge: "custom", customColor: "#EF4444", lastActive: "1h ago" },
+  { name: "Deepak Patel", email: "deepak@sugarcosmetics.com", initials: "DP", grad: "from-[#14B8A6] to-[#0D9488]", role: "Brand Manager", badge: "yellow", lastActive: "6h ago" },
+  { name: "Ravi Nair", email: "ravi@sugarcosmetics.com", initials: "RN", grad: "from-[#7C3AED] to-[#6D28D9]", role: "API Manager", badge: "custom", customColor: "#14B8A6", lastActive: "2d ago" },
 ];
 
 export default function TeamPage() {
@@ -44,10 +44,10 @@ export default function TeamPage() {
         <div className="flex items-center justify-between text-xs">
           <div>
             <span className="font-bold text-t1">Domain auto-join enabled</span>
-            <span className="ml-2 text-t4">Anyone with @ajio.com can join as Creator</span>
+            <span className="ml-2 text-t4">Anyone with @sugarcosmetics.com can join as Creator</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <code className="rounded bg-s2 px-2 py-1 text-[10px] text-t3">stampos.app/join/ajio-f8k2</code>
+            <code className="rounded bg-s2 px-2 py-1 text-[10px] text-t3">stampos.app/join/sugar-f8k2</code>
             <Button size="sm">Copy</Button>
             <Button size="sm">Settings</Button>
           </div>

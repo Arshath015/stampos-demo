@@ -1,3 +1,5 @@
+import { batches, reviewQueue } from "./mock-data";
+
 export interface NavItem {
   label: string;
   href: string;
@@ -9,6 +11,11 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+// Real counts off the same data the Batches and Review Queue pages render —
+// not a separately-authored number that can drift from what's actually there.
+const activeBatchCount = batches.filter((b) => b.reviewState !== "complete").length;
+const reviewQueueCount = reviewQueue.pendingBatchReview.length + reviewQueue.inIndividualReview.length;
+
 export const navGroups: NavGroup[] = [
   {
     label: "Core Workflow",
@@ -17,8 +24,8 @@ export const navGroups: NavGroup[] = [
       { label: "My Brand", href: "/brand" },
       { label: "Generate", href: "/generate" },
       { label: "My Products", href: "/products" },
-      { label: "Batches", href: "/batches", badge: 3 },
-      { label: "Review Queue", href: "/review", badge: 5 },
+      { label: "Batches", href: "/batches", badge: activeBatchCount },
+      { label: "Review Queue", href: "/review", badge: reviewQueueCount },
       { label: "Export", href: "/export" },
     ],
   },

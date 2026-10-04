@@ -141,9 +141,9 @@ export const batches: Batch[] = [
   },
   {
     id: "#007",
-    productName: "Matte Setting Powder",
-    category: "Concealer",
-    images: 16,
+    productName: "Ultrastay Transferproof Lipstick — Shade 04",
+    category: "Ultrastay Lipstick",
+    images: 20,
     reviewState: "pending-batch-review",
     action: "start-review",
     updated: "Yesterday",
@@ -193,19 +193,19 @@ export const batches: Batch[] = [
   },
   {
     id: "#002",
-    productName: "SUGAR Pop Lipstick Duo",
-    category: "Lip Liner",
+    productName: "Ultrastay Transferproof Lipstick — Shade 01",
+    category: "Ultrastay Lipstick",
     images: 20,
     reviewState: "in-progress",
-    reviewedCount: 10,
-    approved: 8,
+    reviewedCount: 14,
+    approved: 12,
     rejected: 2,
     action: "review",
     updated: "6 days ago",
   },
   {
     id: "#001",
-    productName: "AOF Dewy Foundation — Shade 47 — White",
+    productName: "AOF Dewy Foundation — Shade 47",
     category: "AOF Dewy Foundation",
     images: 24,
     reviewState: "complete",
@@ -213,6 +213,28 @@ export const batches: Batch[] = [
     rejected: 4,
     action: "export",
     updated: "1 week ago",
+  },
+  {
+    id: "#009",
+    productName: "Ultrastay Transferproof Lipstick — Shade 15",
+    category: "Ultrastay Lipstick",
+    images: 20,
+    reviewState: "complete",
+    approved: 19,
+    rejected: 1,
+    action: "export",
+    updated: "2 weeks ago",
+  },
+  {
+    id: "#010",
+    productName: "Ultrastay Transferproof Lipstick — Shade 17",
+    category: "Ultrastay Lipstick",
+    images: 20,
+    reviewState: "complete",
+    approved: 17,
+    rejected: 3,
+    action: "export",
+    updated: "3 weeks ago",
   },
 ];
 
@@ -360,66 +382,98 @@ export const costSavings = {
   stampOs: "₹1.9L",
 };
 
-export const skuTable = [
-  {
-    product: "AOF Dewy Foundation — Shade 07",
-    sub: "4 color variants",
-    category: "AOF Dewy Foundation",
-    batches: 4,
-    images: 96,
-    reviewPct: 75,
-    tags: ["Summer 2026"],
-    updated: "2h ago",
-  },
-  {
-    product: "Matte Setting Powder",
-    sub: "1 batch",
-    category: "Concealer",
-    batches: 1,
-    images: 16,
-    reviewPct: null,
-    reviewLabel: "Pending",
-    tags: ["Summer 2026"],
-    updated: "Yesterday",
-  },
-  {
-    product: "Ultrastay Transferproof Lipstick — Shade 13",
-    sub: "2 batches",
-    category: "Ultrastay Lipstick",
-    batches: 2,
-    images: 40,
-    reviewPct: 100,
-    tags: ["Nykaa Catalog"],
-    updated: "3d ago",
-  },
-  {
-    product: "SUGAR Pop Lipstick Duo",
-    sub: "1 batch",
-    category: "Lip Liner",
-    batches: 1,
-    images: 20,
-    reviewPct: 50,
-    tags: [],
-    updated: "5d ago",
-  },
-  {
-    product: "Ultrastay Lipstick Duo",
-    sub: "1 batch",
-    category: "Setting Spray",
-    batches: 1,
-    images: 12,
-    reviewPct: 100,
-    tags: ["Website Heroes"],
-    updated: "1w ago",
-  },
+/**
+ * Product ID is shared across every shade in a line (like a parent SKU in a
+ * real catalog); SKU ID is the per-shade child — {productId}-{shade}. Real
+ * schemes vary a lot, but "shared parent, suffixed child" is the common
+ * thread, so that's what's modeled here rather than inventing per-shade IDs
+ * with no relation to each other.
+ */
+const CATALOG_PRODUCT_IDS: Record<"foundation" | "lipstick", string> = {
+  foundation: "AOF-FND-01",
+  lipstick: "UTP-LIP-02",
+};
+
+/** A couple of real SKUs carry the same marketing-campaign tags the old
+ * table had, minus the ones that belonged to removed fake rows. */
+const CATALOG_TAGS: Record<string, string[]> = {
+  "AOF-FND-01-07": ["Summer 2026"],
+  "UTP-LIP-02-13": ["Nykaa Catalog"],
+  "AOF-FND-01-47": ["Website Heroes"],
+};
+
+export interface CatalogSkuRow {
+  productId: string;
+  skuId: string;
+  product: string;
+  sub: string;
+  category: string;
+  thumbSrc: string;
+  batches: number;
+  images: number;
+  reviewPct: number | null;
+  reviewLabel?: string;
+  tags: string[];
+  updated: string;
+}
+
+function buildCatalogRow(line: "foundation" | "lipstick", shade: string): CatalogSkuRow {
+  const productId = CATALOG_PRODUCT_IDS[line];
+  const skuId = `${productId}-${shade}`;
+  const productName = line === "foundation" ? "AOF Dewy Foundation" : "Ultrastay Transferproof Lipstick";
+  const category = line === "foundation" ? "AOF Dewy Foundation" : "Ultrastay Lipstick";
+  // One real batch per real SKU (see `batches` above) — pull the live
+  // numbers from there instead of hand-authoring a second, driftable copy.
+  const batch = batches.find((b) => {
+    const parsed = parseBatchShade(b.productName);
+    return parsed?.line === line && parsed.shade === shade;
+  });
+  const reviewPct =
+    !batch || batch.reviewState === "generating" || batch.reviewState === "pending-batch-review"
+      ? null
+      : batch.reviewState === "complete"
+        ? 100
+        : Math.round(((batch.reviewedCount ?? 0) / batch.images) * 100);
+  const reviewLabel = !batch
+    ? "No batches yet"
+    : batch.reviewState === "generating"
+      ? "Generating"
+      : batch.reviewState === "pending-batch-review"
+        ? "Pending"
+        : undefined;
+  return {
+    productId,
+    skuId,
+    product: `${productName} — Shade ${shade}`,
+    sub: batch ? "1 batch" : "0 batches",
+    category,
+    thumbSrc:
+      line === "foundation"
+        ? `/images/products/foundation/foundation-shade-${shade}.jpg`
+        : `/images/products/lipstick/lipstick-shade-${shade}.jpg`,
+    batches: batch ? 1 : 0,
+    images: batch?.images ?? 0,
+    reviewPct,
+    reviewLabel,
+    tags: CATALOG_TAGS[skuId] ?? [],
+    updated: batch?.updated ?? "—",
+  };
+}
+
+/** The real 10-SKU catalog — 5 AOF Dewy Foundation shades + 5 Ultrastay
+ * Transferproof Lipstick shades, i.e. exactly the SKUs that have curated
+ * result images on disk (see foundationSkuShades / lipstickSkuShades). */
+export const catalogSkus: CatalogSkuRow[] = [
+  ...foundationSkuShades.map((shade) => buildCatalogRow("foundation", shade)),
+  ...lipstickSkuShades.map((shade) => buildCatalogRow("lipstick", shade)),
 ];
 
 export const reviewQueue = {
   pendingBatchReview: [
     {
       batchId: "#007",
-      product: "Matte Setting Powder",
-      meta: "Concealer · 16 images · Generated yesterday",
+      product: "Ultrastay Transferproof Lipstick — Shade 04",
+      meta: "Ultrastay Lipstick · 20 images · Generated yesterday",
     },
   ],
   inIndividualReview: [
@@ -431,9 +485,9 @@ export const reviewQueue = {
     },
     {
       batchId: "#002",
-      product: "SUGAR Pop Lipstick Duo",
-      meta: "Lip Liner · 10 of 20 reviewed · 50% done",
-      pct: 50,
+      product: "Ultrastay Transferproof Lipstick — Shade 01",
+      meta: "Ultrastay Lipstick · 14 of 20 reviewed · 70% done",
+      pct: 70,
     },
   ],
   complete: [

@@ -14,9 +14,27 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
+const siteUrl = "https://stampos-demo.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "STAMP OS — AI Catalog Engine",
-  description: "AI-powered catalog image generation platform for SUGAR Cosmetics",
+  description:
+    "AI-powered catalog image generation demo for SUGAR Cosmetics. Frontend demo with a simulated AI training/generation flow.",
+  openGraph: {
+    title: "STAMP OS — AI Catalog Engine",
+    description:
+      "AI-powered catalog image generation demo for SUGAR Cosmetics. Frontend demo with a simulated AI training/generation flow.",
+    url: siteUrl,
+    siteName: "STAMP OS",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "STAMP OS — AI Catalog Engine",
+    description:
+      "AI-powered catalog image generation demo for SUGAR Cosmetics. Frontend demo with a simulated AI training/generation flow.",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

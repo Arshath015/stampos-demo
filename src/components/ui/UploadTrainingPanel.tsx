@@ -63,6 +63,21 @@ export function UploadTrainingPanel({
     );
   }
 
+  if (phase === "done") {
+    return (
+      <div className="flex flex-col items-center gap-3 py-6 text-center">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-success">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        <div className="text-sm font-semibold text-t1">
+          {fileNames.length} photo{fileNames.length === 1 ? "" : "s"} uploaded
+        </div>
+        {skuLabel && <div className="text-[11px] text-t4">Tied to {skuLabel}</div>}
+        <ThumbRow previews={previews} />
+      </div>
+    );
+  }
+
   return null;
 }
 
