@@ -1,6 +1,6 @@
 # STAMP OS — AI Catalog Engine (Demo)
 
-**Live demo:** https://stampos-demo.vercel.app
+**Live demo:** [StampOS Demo](https://stampos-ai.vercel.app/)
 
 STAMP OS is an internal tool concept for SUGAR Cosmetics: upload reference
 photos for a product SKU, "train" a model on them, and generate a full set
