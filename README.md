@@ -1,5 +1,7 @@
 # STAMP OS — AI Catalog Engine (Demo)
 
+![Python](https://img.shields.io/badge/python-3.x-blue.svg)
+
 **Live demo:** [StampOS Demo](https://stampos-ai.vercel.app/)
 
 STAMP OS is an internal tool concept for SUGAR Cosmetics: upload reference
