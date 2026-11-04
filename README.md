@@ -55,3 +55,10 @@ npm run build   # production build
 npm run start   # run the production build locally
 npm run lint
 ```
+
+
+## Requirements
+
+```
+pip install -r requirements.txt
+```
